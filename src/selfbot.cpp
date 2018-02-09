@@ -5,6 +5,7 @@
 #include "libirc_rfcnumeric.h"
 #include <cstdio>
 #include <vector>
+#include <regex>
 
 const unsigned short PORT = 6667;
 const char* ADDRESS = "irc.chat.twitch.tv";
@@ -16,16 +17,27 @@ void event_connect(irc_session_t* session, const char * event, const char * orig
 	// join the channels
 	for (auto c : channels) {
 		irc_cmd_join(session, c.c_str(), 0);
+		std::printf("Joined %s\n", c.c_str());
 	}
 }
 
 // RFC numeric codes, basically gonna ignore this one
-void event_numeric(irc_session_t* session, const char * event, const char * origin, const char ** params, unsigned int count) {
+void event_numeric(irc_session_t* session, unsigned int event, const char * origin, const char ** params, unsigned int count) {
 }
 
 // when a message shows up in a channel from anyone but me
 void event_channel(irc_session_t* session, const char * event, const char * origin, const char ** params, unsigned int count) {
+	if (!origin || count != 2)
+		return;
 
+	std::string message = params[1];
+	std::string nick;
+	char nickbuff[128];
+	irc_target_get_nick(origin, nickbuff, sizeof(nickbuff));
+	nick = std::string(nickbuff);
+	
+	// send a message in the channel:
+	// irc_cmd_msg(session, params[0], text);
 }
 
 int main(void) {
@@ -34,7 +46,8 @@ int main(void) {
 	std::string username;
 	std::string oauthpass;
 
-	for (int i = 0, std::string line; std::getline(conf, line); i++) {
+	std::string line;
+	for (int i = 0; std::getline(conf, line); i++) {
 		if (i == 0)
 			username = line;
 		if (i == 1)
@@ -76,7 +89,7 @@ int main(void) {
 
 	// this loop will go forever, generating all the events
 	if (irc_run(s)) {
-		std::printf("Could not connect or IO error: %s\n", ircstrerror(irc_errno(s)));
+		std::printf("Could not connect or IO error: %s\n", irc_strerror(irc_errno(s)));
 		return 1;
 	}
 
