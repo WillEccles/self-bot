@@ -107,6 +107,11 @@ void event_channel(irc_session_t* session, const char * event, const char * orig
 int main(void) {
 	// load up the config, and if there's no usable one, return 1
 	std::ifstream conf("config");
+	if (!conf) {
+		std::cout << "Error opening config.\n";
+		return 1;
+	}
+
 	std::string username;
 	std::string oauthpass;
 
