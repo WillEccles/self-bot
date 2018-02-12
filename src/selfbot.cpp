@@ -71,9 +71,9 @@ void event_channel(irc_session_t* session, const char * event, const char * orig
 		int error = 0;
 		double output = te_interp(message.c_str(), &error);
 		if (error != 0)
-			irc_cmd_msg(session, params[0], std::string("/me " + nick + "-> invalid expression").c_str());
+			irc_cmd_msg(session, params[0], std::string("/me " + nick + " -> invalid expression").c_str());
 		else
-			irc_cmd_msg(session, params[0], std::string("/me " + nick + "-> " + std::to_string(output)).c_str());
+			irc_cmd_msg(session, params[0], std::string("/me " + nick + " -> " + std::to_string(output)).c_str());
 	}
 }
 
