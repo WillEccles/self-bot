@@ -20,7 +20,7 @@ const std::regex greetingPattern("^((hello|heyo*?|sup|howdy|what('?s)? up|hi)!*\
 const std::regex packetsCommand("^\\?gibpackets", REGEX_FLAGS); // should only work in #barbaricmustard
 const std::regex mathCommand("^\\?c\\s+[-^*+/0-9a-zA-Z()%]+", REGEX_FLAGS); // for math calculations, prefix command with ?c and then type in your math
 
-std::regex cleanCommand("\\?c", REGEX_FLAGS);
+std::regex cleanCommand("^\\?c", REGEX_FLAGS);
 
 void toLower(std::string& str) {
 	for (size_t i = 0; i < str.size(); i++) {
