@@ -65,6 +65,7 @@ void event_channel(irc_session_t* session, const char * event, const char * orig
 			std::cout << "Gave all packets to " << nick << '\n';
 		}
 	} else if (std::regex_match(message, mathCommand)) {
+		std::cout << "Got '" << message << "' from " << nick << " in " << channel << '\n';
 		// parse the math expression given to the command and then do the math and put it in chat
 		std::regex_replace(message, cleanCommand, "");
 		// now that the string has no whitespace or ? at the beginning, parse the math
