@@ -78,6 +78,12 @@ void event_channel(irc_session_t* session, const char * event, const char * orig
 			std::smatch match = *i;
 			parts.push_back(match.str());
 		}
+		// this happens when there is an expression such as 5-2, and makes it 5+(-2)
+		// this is due to an inherent flaw, that the regex in C++ doesn't allow lookbehinds
+		if (parts.size() == 2) {
+			parts.push_back(parts[1]);
+			parts[1] = "+";
+		}
 		toLower(parts[1]);
 
 		// DEBUG:
