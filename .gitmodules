@@ -1,3 +1,6 @@
 [submodule "wrestd"]
 	path = wrestd
 	url = https://github.com/willeccles/wrestd
+[submodule "tinyexpr"]
+	path = tinyexpr
+	url = https://github.com/codeplea/tinyexpr
