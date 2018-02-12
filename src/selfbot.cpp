@@ -18,12 +18,10 @@ const char* REALNAME = "Will Eccles";
 std::vector<std::string> channels; // this will house all the channels we wish to join
 const std::regex greetingPattern("^((hello|heyo*?|sup|howdy|what('?s)? up|hi)!*\\s+@?(cactus|cacus|cacy|will|tiny_cactus|tiny|ghosty)\\s*!*)", REGEX_FLAGS); // TODO: deal with emotes and strange greetings
 const std::regex packetsCommand("^\\?gibpackets", REGEX_FLAGS); // should only work in #barbaricmustard
-const std::regex mathCommand("^\\?\\s*(-?\\d+(\\.\\d+)?)\\s*[-*+/^%]\\s*(-?\\d+(\\.\\d+)?)\\s*$", REGEX_FLAGS); // matches math expressions
-const std::regex sqrtCommand("^\\?\\s*sqrt\\s*((\\d+(\\.\\d+)?)|(\\(\\s*\\d+(\\.\\d+)?\\s*\\)))$", REGEX_FLAGS); // parses ?sqrt command which square roots the given input
+const std::regex mathCommand("^\\?c\\s+[-^*+/0-9a-zA-Z()%]+", REGEX_FLAGS); // for math calculations, prefix command with ?c and then type in your math
 
 // these are used for parsing, but constructed here so they aren't a colossal waste of memory and speed
-std::regex cleanCommand("[\\s?]", REGEX_FLAGS);
-std::regex mathParts("(-?\\d+(\\.\\d+)?)|([-*+/^])", REGEX_FLAGS);
+std::regex cleanCommand("(^\\?c)|\\s+", REGEX_FLAGS);
 
 void toLower(std::string& str) {
 	for (size_t i = 0; i < str.size(); i++) {
@@ -69,46 +67,14 @@ void event_channel(irc_session_t* session, const char * event, const char * orig
 		//std::cout << "Got '" << message << "' from " << nick << " in " << channel << '\n';
 		// parse the math expression given to the command and then do the math and put it in chat
 		std::regex_replace(message, cleanCommand, "");
-		// now that the string has no whitespace or ? at the beginning, parse the math
-		// it should now be in the format of <+/-number><operation><+/-number>
-		// use a regex iterator to find the parts
-		std::vector<std::string> parts;
-		auto words_begin = std::sregex_iterator(message.begin(), message.end(), mathParts);
-		auto words_end = std::sregex_iterator();
-		for (std::sregex_iterator i = words_begin; i != words_end; i++) {
-			std::smatch match = *i;
-			parts.push_back(match.str());
-		}
-		// this happens when there is an expression such as 5-2, and makes it 5+(-2)
-		// this is due to an inherent flaw, that the regex in C++ doesn't allow lookbehinds
-		if (parts.size() == 2) {
-			parts.push_back(parts[1]);
-			parts[1] = "+";
-		}
-		toLower(parts[1]);
-
-		// DEBUG:
-		//for (auto s: parts)
-		//	std::cout << s << '\n';
 		
-		// this is the part where we make it do math
-		long double n1 = std::stold(parts[0]);
-		long double n2 = std::stold(parts[2]);
-		long double r;
-		std::string op = parts[1];
-		if (op == "+") {
-			r = n1 + n2;
-		} else if (op == "-") {
-			r = n1 - n2;
-		} else if (op == "/") {
-			r = n1 / n2;
-		} else if (op == "*") {
-			r = n1 * n2;
-		} else if (op == "^") {
-			r = pow(n1, n2);
-		}
-		
-		irc_cmd_msg(session, params[0], std::string("/me " + nick + "-> " + std::to_string(r)).c_str());
+		// now that the string has no whitespace or ?c at the beginning, parse the math
+		int error;
+		double output = te_interp(message.c_str(), &error);
+		if (error)
+			irc_cmd_msg(session, params[0], std::string("/me " + nick + "-> invalid expression").c_str());
+		else
+			irc_cmd_msg(session, params[0], std::string("/me " + nick + "-> " + std::to_string(output)).c_str());
 	}
 }
 

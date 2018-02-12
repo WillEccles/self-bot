@@ -1,10 +1,7 @@
 SRCFILE=src/selfbot.cpp
 LIBDIR=libircclient
-FLAGS=-I$(LIBDIR)/include -Itinyexpr -Llibircclient -lircclient -std=c++14 -O2
+FLAGS=-I$(LIBDIR)/include -Llibircclient -lircclient -std=c++14 -O2
 OUTPUT=bot
 
-all: $(SRCFILE) tinyexpr
+all: $(SRCFILE)
 	$(CXX) $(FLAGS) $(SRCFILE) -o $(OUTPUT)
-
-tinyexpr:
-	$(CC) tinyexpr/tinyexpr.c -o tinyexpr/tinyexpr.o -O2
