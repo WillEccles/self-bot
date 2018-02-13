@@ -18,7 +18,7 @@ const char* REALNAME = "Will Eccles";
 std::vector<std::string> channels; // this will house all the channels we wish to join
 const std::regex greetingPattern("^((hello|heyo*?|sup|howdy|what('?s)? up|hi)!*\\s+@?(cactus|cacus|cacy|will|tiny_cactus|tiny|ghosty)\\s*!*)", REGEX_FLAGS); // TODO: deal with emotes and strange greetings
 const std::regex packetsCommand("^\\?gibpackets", REGEX_FLAGS); // should only work in #barbaricmustard
-const std::regex mathCommand("^\\?c[-^*+/0-9a-z()%\\s]+", REGEX_FLAGS); // for math calculations, prefix command with ?c and then type in your math
+const std::regex mathCommand("^\\?c[-^*+/.0-9a-z()%\\s]+", REGEX_FLAGS); // for math calculations, prefix command with ?c and then type in your math
 
 std::regex cleanCommand("^\\?c", REGEX_FLAGS);
 
