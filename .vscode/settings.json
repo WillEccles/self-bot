@@ -10,6 +10,7 @@
 		"stdexcept": "cpp",
 		"typeinfo": "cpp",
 		"algorithm": "cpp",
-		"set": "cpp"
+		"set": "cpp",
+		"regex": "cpp"
 	}
 }

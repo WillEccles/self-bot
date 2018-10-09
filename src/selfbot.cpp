@@ -22,14 +22,14 @@ const char* REALNAME = "Will Eccles";
 std::set<std::string> channels; // this will house all the channels we wish to join
 std::set<std::string> modifiedchannels; // this will house all the channels added or removed
 bool channelsModified = false;
-const std::regex greetingPattern("^((hello|heyo*?|sup|howdy|what('?s)? up|hi)!*\\s+@?(cactus|cacus|cacy|will|tiny_cactus|tiny|ghosty)\\s*!*)", REGEX_FLAGS); // TODO: deal with emotes and strange greetings
+const std::regex greetingPattern("^((hello|heyo*?|sup|howdy|what('?s)? up|hi)!*\\s+@?(cactus|cacus|will|tiny_cactus|tiny|ghosty)\\s*!*)", REGEX_FLAGS); // TODO: deal with emotes and strange greetings
 const std::regex packetsCommand("^\\?gibpackets", REGEX_FLAGS); // should only work in #barbaricmustard
-const std::regex mathCommand("^\\?c[-^*+/.0-9a-z()%\\s]+", REGEX_FLAGS); // for math calculations, prefix command with ?c and then type in your math
+const std::regex mathCommand("^\\?c(alc(ulate)?)?[-^*+/.0-9a-z()%\\s]+", REGEX_FLAGS); // for math calculations, prefix command with ?c and then type in your math
 const std::regex addChannelCommand("^\\?(a(dd)?|j(oin)?)c(hannel)?\\s+#?[a-zA-Z0-9][\\w]{3,24}", REGEX_FLAGS);
 const std::regex removeChannelCommand("^\\?(r(emove)?|l(eave)?)c(hannel)?\\s+#?[a-zA-Z0-9][\\w]{3,24}", REGEX_FLAGS);
-const std::regex cleanCommand("(^\\?\\w+\\s+)|(\\s+$)", REGEX_FLAGS);
 const std::regex saveChannelsCommand("^\\?s(save)?c(hannels)?", REGEX_FLAGS);
 const std::regex listChannelsCommand("^\\?(list|ls)c(hannels)?", REGEX_FLAGS);
+const std::regex cleanCommand("(^\\?\\w+\\s+)|(\\s+$)", REGEX_FLAGS);
 
 void toLower(std::string& str) {
 	for (size_t i = 0; i < str.size(); i++) {
