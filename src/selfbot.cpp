@@ -9,6 +9,7 @@
 #include <set>
 #include <regex>
 #include <iterator>
+#include <algorithm>
 #include <cmath>
 
 #define REGEX_FLAGS std::regex_constants::icase|std::regex_constants::optimize
@@ -28,6 +29,7 @@ const std::regex addChannelCommand("^\\?(a(dd)?|j(oin)?)c(hannel)?\\s+#?[a-zA-Z0
 const std::regex removeChannelCommand("^\\?(r(emove)?|l(eave)?)c(hannel)?\\s+#?[a-zA-Z0-9][\\w]{3,24}", REGEX_FLAGS);
 const std::regex cleanCommand("(^\\?\\w+\\s+)|(\\s+$)", REGEX_FLAGS);
 const std::regex saveChannelsCommand("^\\?s(save)?c(hannels)?", REGEX_FLAGS);
+const std::regex listChannelsCommand("^\\?(list|ls)c(hannels)?", REGEX_FLAGS);
 
 void toLower(std::string& str) {
 	for (size_t i = 0; i < str.size(); i++) {
@@ -148,6 +150,11 @@ void event_channel(irc_session_t* session, const char * event, const char * orig
 		if (message[0] != '#')
 			message = "#" + message;
 
+		if (message == "#" + username) {
+			irc_cmd_msg(session, params[0], std::string("/me " + nick + " -> Cannot remove own channel.").c_str());
+			return;
+		}
+
 		// remove the channel
 		if (channels.find(message) != channels.end())
 		{
@@ -180,6 +187,20 @@ void event_channel(irc_session_t* session, const char * event, const char * orig
 		int error = saveConfig(status);
 		std::printf("%s\n", status.c_str());
 		irc_cmd_msg(session, params[0], std::string("/me " + nick + " -> " + status).c_str());
+	} else if (std::regex_match(message, listChannelsCommand)) {
+		if (nick != "tiny_cactus" || channel != "#tiny_cactus") return;
+
+		std::string current = "Current channels:";
+		size_t i = 0;
+		for (auto it = channels.begin(); it != channels.end(); it++, i++)
+		{
+			current += " " + (*it);
+			if (i != channels.size()-1)
+				current += ",";
+		}
+
+		size_t modsize = modifiedchannels.size();
+		irc_cmd_msg(session, params[0], std::string("/me " + nick + " -> " + current + ". There " + (modsize == 1? "is" : "are") + " " + (modsize == 0 ? "no" : std::to_string(modsize)) + " modified channel" + (modsize == 1 ? "" : "s") + "." + (modsize == 0? "" : " Use ?savechannels or ?sc to save changes.")).c_str());
 	}
 }
 
@@ -207,9 +228,9 @@ int main(void) {
 
 	conf.close();
 
-	if (channels.empty()) {
-		std::cout << "No channels specified.\n";
-		return 1;
+	if (channels.find("#" + username) == channels.end()) {
+		channels.insert("#" + username);
+		std::printf("Own channel not in list, added to channels.\n");
 	}
 
 	irc_callbacks_t callbacks;
