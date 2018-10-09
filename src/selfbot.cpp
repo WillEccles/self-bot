@@ -29,6 +29,11 @@ const std::regex addChannelCommand("^\\?(a(dd)?|j(oin)?)c(hannel)?\\s+#?[a-zA-Z0
 const std::regex removeChannelCommand("^\\?(r(emove)?|l(eave)?)c(hannel)?\\s+#?[a-zA-Z0-9][\\w]{3,24}", REGEX_FLAGS);
 const std::regex saveChannelsCommand("^\\?s(save)?c(hannels)?", REGEX_FLAGS);
 const std::regex listChannelsCommand("^\\?(list|ls)c(hannels)?", REGEX_FLAGS);
+const std::regex oodleCommand("^\\?oodle\\s+.+", REGEX_FLAGS);
+const std::regex oodleReplaceUpper("[AEIOU]", std::regex_constants::optimize);
+const std::regex oodleReplaceLower("[aeiou]", std::regex_constants::optimize);
+
+// used to clean commands to just their arguments/parameters, removing the command itself and any leading/trailing spaces
 const std::regex cleanCommand("(^\\?\\w+\\s+)|(\\s+$)", REGEX_FLAGS);
 
 void toLower(std::string& str) {
@@ -121,6 +126,12 @@ void event_channel(irc_session_t* session, const char * event, const char * orig
 			irc_cmd_msg(session, params[0], std::string("/me " + nick + " -> invalid expression").c_str());
 		else
 			irc_cmd_msg(session, params[0], std::string("/me " + nick + " -> " + std::to_string(output)).c_str());
+	} else if (std::regex_match(message, oodleCommand)) {
+		message = std::regex_replace(message, cleanCommand, "");
+		message = std::regex_replace(message, oodleReplaceUpper, "OODLE");
+		message = std::regex_replace(message, oodleReplaceLower, "oodle");
+
+		irc_cmd_msg(session, params[0], std::string("/me " + nick + " -> " + message).c_str());
 	} else if (std::regex_match(message, addChannelCommand)) {
 		if (nick != "tiny_cactus") return;
 		message = std::regex_replace(message, cleanCommand, "");
