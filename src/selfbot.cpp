@@ -6,21 +6,28 @@
 #include "tinyexpr.h"
 #include <cstdio>
 #include <vector>
+#include <set>
 #include <regex>
 #include <iterator>
 #include <cmath>
 
 #define REGEX_FLAGS std::regex_constants::icase|std::regex_constants::optimize
 
+std::string username;
+std::string oauthpass;
 const unsigned short PORT = 6667;
 const char* ADDRESS = "irc.chat.twitch.tv";
 const char* REALNAME = "Will Eccles";
-std::vector<std::string> channels; // this will house all the channels we wish to join
+std::set<std::string> channels; // this will house all the channels we wish to join
+std::set<std::string> modifiedchannels; // this will house all the channels added or removed
+bool channelsModified = false;
 const std::regex greetingPattern("^((hello|heyo*?|sup|howdy|what('?s)? up|hi)!*\\s+@?(cactus|cacus|cacy|will|tiny_cactus|tiny|ghosty)\\s*!*)", REGEX_FLAGS); // TODO: deal with emotes and strange greetings
 const std::regex packetsCommand("^\\?gibpackets", REGEX_FLAGS); // should only work in #barbaricmustard
 const std::regex mathCommand("^\\?c[-^*+/.0-9a-z()%\\s]+", REGEX_FLAGS); // for math calculations, prefix command with ?c and then type in your math
-
-std::regex cleanCommand("^\\?c", REGEX_FLAGS);
+const std::regex addChannelCommand("^\\?(a(dd)?|j(oin)?)c(hannel)?\\s+#?[a-zA-Z0-9][\\w]{3,24}", REGEX_FLAGS);
+const std::regex removeChannelCommand("^\\?(r(emove)?|l(eave)?)c(hannel)?\\s+#?[a-zA-Z0-9][\\w]{3,24}", REGEX_FLAGS);
+const std::regex cleanCommand("(^\\?\\w+\\s+)|(\\s+$)", REGEX_FLAGS);
+const std::regex saveChannelsCommand("^\\?s(save)?c(hannels)?", REGEX_FLAGS);
 
 void toLower(std::string& str) {
 	for (size_t i = 0; i < str.size(); i++) {
@@ -29,12 +36,50 @@ void toLower(std::string& str) {
 	}
 }
 
+void updateModifiedChannels(std::string moddedChannel) {
+	if (modifiedchannels.find(moddedChannel) == modifiedchannels.end()) {
+		modifiedchannels.insert(moddedChannel);
+	} else {
+		modifiedchannels.erase(moddedChannel);
+	}
+
+	channelsModified = (modifiedchannels.size() != 0);
+}
+
+int saveConfig(std::string& status) {
+	if (!channelsModified) {
+		status = "Channels not modified.";
+		return 1;
+	}
+
+	std::ofstream conf("config", std::ios::out | std::ios::trunc);
+	if (!conf) {
+		status = "Could not open config for writing.";
+		return 2;
+	}
+
+	conf << username << '\n';
+	conf << oauthpass << '\n';
+	for (auto &c : channels) {
+		conf << c << '\n';
+	}
+
+	conf.close();
+	modifiedchannels.clear();
+	channelsModified = false;
+	status = "Channels saved successfully.";
+	return 0;
+}
+
 // when the server is connected to
 void event_connect(irc_session_t* session, const char * event, const char * origin, const char ** params, unsigned int count) {
 	// join the channels
 	for (auto c : channels) {
-		irc_cmd_join(session, c.c_str(), 0);
-		std::printf("Joined %s\n", c.c_str());
+		int error = irc_cmd_join(session, c.c_str(), 0);
+		if (!error)
+			std::printf("Joined %s\n", c.c_str());
+		else
+			std::printf("Error joining %s\n", c.c_str());
 	}
 }
 
@@ -42,7 +87,7 @@ void event_connect(irc_session_t* session, const char * event, const char * orig
 void event_numeric(irc_session_t* session, unsigned int event, const char * origin, const char ** params, unsigned int count) {
 }
 
-// when a message shows up in a channel from anyone but me
+// when a message shows up in a channel
 void event_channel(irc_session_t* session, const char * event, const char * origin, const char ** params, unsigned int count) {
 	if (!origin || count != 2)
 		return;
@@ -74,6 +119,67 @@ void event_channel(irc_session_t* session, const char * event, const char * orig
 			irc_cmd_msg(session, params[0], std::string("/me " + nick + " -> invalid expression").c_str());
 		else
 			irc_cmd_msg(session, params[0], std::string("/me " + nick + " -> " + std::to_string(output)).c_str());
+	} else if (std::regex_match(message, addChannelCommand)) {
+		if (nick != "tiny_cactus") return;
+		message = std::regex_replace(message, cleanCommand, "");
+		if (message[0] != '#')
+			message = "#" + message;
+
+		// join the channel and add it to the set
+		if (channels.find(message) == channels.end()) {
+			int error = irc_cmd_join(session, message.c_str(), 0);
+			if (!error) {
+				irc_cmd_msg(session, params[0], std::string("/me " + nick + " -> Attempted to join channel " + message + ".").c_str());
+				channels.insert(message);
+				std::printf("Joining channel %s.\n", message.c_str());
+				updateModifiedChannels(message);
+			} else {
+				irc_cmd_msg(session, params[0], std::string("/me " + nick + " -> Error trying to join channel " + message + ".").c_str());
+			}
+		} else {
+			if (modifiedchannels.find(message) != modifiedchannels.end())
+				irc_cmd_msg(session, params[0], std::string("/me " + nick + " -> Already joined channel " + message + ".").c_str());
+			else
+				irc_cmd_msg(session, params[0], std::string("/me " + nick + " -> Already in channel " + message + ".").c_str());
+		}
+	} else if (std::regex_match(message, removeChannelCommand)) {
+		if (nick != "tiny_cactus") return;
+		message = std::regex_replace(message, cleanCommand, "");
+		if (message[0] != '#')
+			message = "#" + message;
+
+		// remove the channel
+		if (channels.find(message) != channels.end())
+		{
+			int error = irc_cmd_part(session, message.c_str());
+			if (!error)
+			{
+				irc_cmd_msg(session, params[0], std::string("/me " + nick + " -> Attempted to leave channel " + message + ".").c_str());
+				channels.erase(message);
+				std::printf("Leaving channel %s.\n", message.c_str());
+				updateModifiedChannels(message);
+			}
+			else
+			{
+				irc_cmd_msg(session, params[0], std::string("/me " + nick + " -> Error trying to leave channel " + message + ".").c_str());
+			}
+		}
+		else
+		{
+			if (modifiedchannels.find(message) != modifiedchannels.end()) {
+				irc_cmd_msg(session, params[0], std::string("/me " + nick + " -> Already left channel " + message + ".").c_str());
+			} else {
+				irc_cmd_msg(session, params[0], std::string("/me " + nick + " -> Not in channel " + message + ".").c_str());
+			}
+		}
+	} else if (std::regex_match(message, saveChannelsCommand)) {
+		if (nick != "tiny_cactus") return;
+		
+		// save the channels file
+		std::string status;
+		int error = saveConfig(status);
+		std::printf("%s\n", status.c_str());
+		irc_cmd_msg(session, params[0], std::string("/me " + nick + " -> " + status).c_str());
 	}
 }
 
@@ -85,9 +191,6 @@ int main(void) {
 		return 1;
 	}
 
-	std::string username;
-	std::string oauthpass;
-
 	std::string line;
 	for (int i = 0; std::getline(conf, line); i++) {
 		if (i == 0)
@@ -96,11 +199,13 @@ int main(void) {
 			oauthpass = line;
 		if (i > 1) {
 			if (line[0] == '#')
-				channels.push_back(line);
+				channels.insert(line);
 			else
-				channels.push_back("#" + line);
+				channels.insert("#" + line);
 		}
 	}
+
+	conf.close();
 
 	if (channels.empty()) {
 		std::cout << "No channels specified.\n";
