@@ -10,7 +10,9 @@
 #include <regex>
 #include <iterator>
 #include <algorithm>
+#include <chrono>
 #include <cmath>
+#include <thread>
 
 #define REGEX_FLAGS std::regex_constants::icase|std::regex_constants::optimize
 
@@ -260,16 +262,21 @@ int main(void) {
 
 	irc_option_set(s, LIBIRC_OPTION_STRIPNICKS);
 	
-	// connect to server for twitch
-	if (irc_connect(s, ADDRESS, PORT, oauthpass.c_str(), username.c_str(), username.c_str(), REALNAME)) {
-		std::printf("Could not connect: %s\n", irc_strerror(irc_errno(s)));
-		return 1;
-	}
-
-	// this loop will go forever, generating all the events
-	if (irc_run(s)) {
-		std::printf("Could not connect or IO error: %s\n", irc_strerror(irc_errno(s)));
-		return 1;
+	for (;;) {
+		std::printf("Attempting to connect...\n");
+		// connect to server for twitch
+		if (irc_connect(s, ADDRESS, PORT, oauthpass.c_str(), username.c_str(), username.c_str(), REALNAME)) {
+			std::printf("Could not connect to twitch. Check credentials.\n");
+		} else {
+			std::printf("Connected to twitch.\n");
+			// this loop will go forever, generating all the events
+			if (irc_run(s))
+			{
+				std::printf("Could not connect or IO error: %s\n", irc_strerror(irc_errno(s)));
+			}
+		}
+		std::printf("Restarting bot in 3 seconds...\n");
+		std::this_thread::sleep_for(std::chrono::seconds(3));
 	}
 
 	return 0;
