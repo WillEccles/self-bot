@@ -13,6 +13,8 @@
 #include <chrono>
 #include <cmath>
 #include <thread>
+#include <sstream>
+#include <cstdlib>
 
 #define REGEX_FLAGS std::regex_constants::icase|std::regex_constants::optimize
 
@@ -34,9 +36,11 @@ const std::regex listChannelsCommand("^\\?(list|ls)c(hannels)?", REGEX_FLAGS);
 const std::regex oodleCommand("^\\?oodle\\s+.+", REGEX_FLAGS);
 const std::regex oodleReplaceUpper("[AEIOU]", std::regex_constants::optimize);
 const std::regex oodleReplaceLower("[aeiou]", std::regex_constants::optimize);
+const std::regex randomNumberCommand("^\\?r(and(om)?)?(n(umber)?)?\\s+\\d+(\\s+\\d+)?\\s*$", REGEX_FLAGS);
 
 // used to clean commands to just their arguments/parameters, removing the command itself and any leading/trailing spaces
 const std::regex cleanCommand("(^\\?\\w+\\s+)|(\\s+$)", REGEX_FLAGS);
+const std::regex reallyCleanCommand("\\s{2,}", REGEX_FLAGS);
 
 void toLower(std::string& str) {
 	for (size_t i = 0; i < str.size(); i++) {
@@ -92,8 +96,13 @@ void event_connect(irc_session_t* session, const char * event, const char * orig
 	}
 }
 
-// RFC numeric codes, basically gonna ignore this one
+// handles responses from the server
 void event_numeric(irc_session_t* session, unsigned int event, const char * origin, const char ** params, unsigned int count) {
+	/* For testing stuff
+	std::printf("Event: %d\nOrigin: %s\nParams (%d):\n", event, origin, count);
+	for (int i = 0; i < count; i++) {
+		std::printf("\t%s\n", params[i]);
+	} */
 }
 
 // when a message shows up in a channel
@@ -134,6 +143,37 @@ void event_channel(irc_session_t* session, const char * event, const char * orig
 		message = std::regex_replace(message, oodleReplaceLower, "oodle");
 
 		irc_cmd_msg(session, params[0], std::string("/me " + nick + " -> " + message).c_str());
+	} else if (std::regex_match(message, randomNumberCommand)) {
+		std::regex_replace(message, cleanCommand, "");
+		std::regex_replace(message, reallyCleanCommand, " ");
+
+		std::stringstream ss(message);
+		std::vector<std::string> parts;
+		std::string token;
+		while (std::getline(ss, token, ' ')) {
+			parts.push_back(token);
+		}
+		parts.erase(parts.begin());
+
+		int first = abs(atoi(parts[0].c_str()));
+		int last;
+		int r;
+		if (parts.size() > 1) {
+			last = abs(atoi(parts[1].c_str()));
+			
+			// always want "last" to be the higher number
+			if (last < first) {
+				int tmp = first;
+				first = last;
+				last = tmp;
+			}
+
+			r = (rand() % (last - first + 1)) + first;
+		} else {
+			r = (rand() % first) + 1;
+		}
+
+		irc_cmd_msg(session, params[0], std::string("/me " + nick + " -> " + std::to_string(r)).c_str());
 	} else if (std::regex_match(message, addChannelCommand)) {
 		if (nick != "tiny_cactus") return;
 		message = std::regex_replace(message, cleanCommand, "");
@@ -218,6 +258,7 @@ void event_channel(irc_session_t* session, const char * event, const char * orig
 }
 
 int main(void) {
+	srand(time(NULL));
 	// load up the config, and if there's no usable one, return 1
 	std::ifstream conf("config");
 	if (!conf) {
